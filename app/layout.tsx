@@ -18,7 +18,7 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: 'StockFlow | Smart Household Inventory',
+  title: 'HygieStock | Smart Household Inventory',
   description: 'Eliminate emergency shopping with smart stock tracking and predictive replenishment.',
 };
 

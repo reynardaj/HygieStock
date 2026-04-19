@@ -22,7 +22,8 @@ import {
   MoreVertical, 
   ScanLine,
   ChevronRight,
-  Loader2
+  Loader2,
+  X
 } from 'lucide-react';
 import { 
   Dialog, 
@@ -33,6 +34,16 @@ import {
   DialogDescription,
   DialogFooter
 } from '@/components/ui/dialog';
+import { 
+  Sheet, 
+  SheetContent, 
+  SheetHeader, 
+  SheetTitle, 
+  SheetTrigger,
+  SheetDescription,
+  SheetFooter,
+  SheetClose
+} from '@/components/ui/sheet';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/components/auth/auth-provider';
@@ -40,12 +51,19 @@ import { db } from '@/lib/firebase';
 import { collection, onSnapshot, query, doc, setDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
 
+const STATUS_OPTIONS = ['Healthy', 'Low', 'Critical', 'Out'];
+
 export default function InventoryPage() {
   const [searchQuery, setSearchQuery] = React.useState('');
   const { householdId } = useAuth();
   const [products, setProducts] = React.useState<any[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false);
+
+  // Filter state
+  const [selectedStatuses, setSelectedStatuses] = React.useState<string[]>([]);
+  const [selectedCategories, setSelectedCategories] = React.useState<string[]>([]);
+  const [selectedLocations, setSelectedLocations] = React.useState<string[]>([]);
 
   // Form state
   const [newProduct, setNewProduct] = React.useState({
@@ -119,17 +137,49 @@ export default function InventoryPage() {
     }
   };
 
-  const filteredProducts = products.filter(p => 
-    p.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    p.category?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
   const getStatus = (stock: number) => {
     if (stock === 0) return 'Out';
     if (stock <= 2) return 'Critical';
     if (stock <= 5) return 'Low';
     return 'Healthy';
   };
+
+  const filteredProducts = products.filter(p => {
+    const status = getStatus(p.currentStock);
+    
+    const matchesSearch = p.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         p.category?.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesStatus = selectedStatuses.length === 0 || selectedStatuses.includes(status);
+    const matchesCategory = selectedCategories.length === 0 || 
+                             (p.category && selectedCategories.includes(p.category)) ||
+                             (!p.category && selectedCategories.includes('Uncategorized'));
+    const matchesLocation = selectedLocations.length === 0 || 
+                             (p.location && selectedLocations.includes(p.location)) ||
+                             (!p.location && selectedLocations.includes('No Location'));
+
+    return matchesSearch && matchesStatus && matchesCategory && matchesLocation;
+  });
+
+  const categories = Array.from(new Set(products.map(p => p.category || 'Uncategorized'))).sort();
+  const locations = Array.from(new Set(products.map(p => p.location || 'No Location'))).sort();
+
+  const toggleFilter = (list: string[], setList: React.Dispatch<React.SetStateAction<string[]>>, value: string) => {
+    if (list.includes(value)) {
+      setList(list.filter(i => i !== value));
+    } else {
+      setList([...list, value]);
+    }
+  };
+
+  const clearFilters = () => {
+    setSelectedStatuses([]);
+    setSelectedCategories([]);
+    setSelectedLocations([]);
+    setSearchQuery('');
+  };
+
+  const activeFiltersCount = selectedStatuses.length + selectedCategories.length + selectedLocations.length;
 
   return (
     <AppLayout>
@@ -267,10 +317,113 @@ export default function InventoryPage() {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <Button variant="outline" className="rounded-xl px-6">
-            <Filter className="mr-2 h-4 w-4" />
-            Filters
-          </Button>
+          <Sheet>
+            <SheetTrigger render={
+              <Button variant="outline" className="rounded-xl px-6 relative">
+                <Filter className="mr-2 h-4 w-4" />
+                Filters
+                {activeFiltersCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-primary text-primary-foreground text-[10px] flex items-center justify-center rounded-full border-2 border-background font-bold">
+                    {activeFiltersCount}
+                  </span>
+                )}
+              </Button>
+            } />
+            <SheetContent side="right" className="p-0">
+              <SheetHeader className="p-6 border-b">
+                <SheetTitle className="text-2xl">Filters</SheetTitle>
+                <SheetDescription>Refine your product catalog view.</SheetDescription>
+              </SheetHeader>
+              <ScrollArea className="h-[calc(100vh-180px)] p-6">
+                <div className="space-y-8">
+                  {/* Status Section */}
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Status</h3>
+                    <div className="grid grid-cols-2 gap-2">
+                      {STATUS_OPTIONS.map(status => (
+                        <button
+                          key={status}
+                          onClick={() => toggleFilter(selectedStatuses, setSelectedStatuses, status)}
+                          className={cn(
+                            "flex items-center justify-center px-3 py-2 rounded-xl border-2 text-xs font-bold transition-all",
+                            selectedStatuses.includes(status) 
+                              ? "border-primary bg-primary/5 text-primary" 
+                              : "border-muted hover:border-muted-foreground/30 text-muted-foreground"
+                          )}
+                        >
+                          {status}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Categories Section */}
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Categories</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {categories.map(category => (
+                        <button
+                          key={category}
+                          onClick={() => toggleFilter(selectedCategories, setSelectedCategories, category)}
+                          className={cn(
+                            "px-3 py-1.5 rounded-full border-2 text-xs font-medium transition-all",
+                            selectedCategories.includes(category)
+                              ? "border-primary bg-primary text-primary-foreground"
+                              : "border-muted hover:border-muted-foreground/30 text-muted-foreground"
+                          )}
+                        >
+                          {category}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Locations Section */}
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Locations</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {locations.map(location => (
+                        <button
+                          key={location}
+                          onClick={() => toggleFilter(selectedLocations, setSelectedLocations, location)}
+                          className={cn(
+                            "px-3 py-1.5 rounded-full border-2 text-xs font-medium transition-all",
+                            selectedLocations.includes(location)
+                              ? "border-primary bg-primary text-primary-foreground"
+                              : "border-muted hover:border-muted-foreground/30 text-muted-foreground"
+                          )}
+                        >
+                          {location}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </ScrollArea>
+              <SheetFooter className="p-6 border-t bg-muted/30">
+                <div className="flex gap-4 w-full">
+                  <Button 
+                    variant="outline" 
+                    className="flex-1 rounded-xl"
+                    onClick={clearFilters}
+                  >
+                    Reset
+                  </Button>
+                  <SheetClose render={<Button className="flex-1 rounded-xl">Apply Filters</Button>} />
+                </div>
+              </SheetFooter>
+            </SheetContent>
+          </Sheet>
+          {activeFiltersCount > 0 && (
+            <Button 
+              variant="ghost" 
+              className="rounded-xl px-4 text-muted-foreground hover:text-foreground"
+              onClick={clearFilters}
+            >
+              <X className="mr-2 h-4 w-4" />
+              Clear All
+            </Button>
+          )}
         </div>
 
         {/* Product Table */}

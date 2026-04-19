@@ -32,7 +32,7 @@ export default function ShoppingListPage() {
   const exportPDF = () => {
     const doc = new jsPDF();
     doc.setFontSize(20);
-    doc.text('StockFlow Shopping List', 20, 20);
+    doc.text('HygieStock Shopping List', 20, 20);
     doc.setFontSize(12);
     doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 20, 30);
     

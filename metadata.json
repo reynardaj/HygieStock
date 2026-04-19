@@ -1,5 +1,5 @@
 {
-  "name": "StockFlow",
+  "name": "HygieStock",
   "description": "A smart household inventory system with barcode scanning, predictive replenishment, and shared family visibility to eliminate emergency shopping.",
   "requestFramePermissions": ["camera"]
 }

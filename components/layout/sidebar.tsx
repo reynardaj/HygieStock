@@ -40,7 +40,7 @@ export function Sidebar({ className }: { className?: string }) {
       <div className="px-6 py-8">
         <h2 className="text-2xl font-bold tracking-tight text-primary flex items-center gap-2">
           <Package className="w-8 h-8" />
-          StockFlow
+          HygieStock
         </h2>
       </div>
       <ScrollArea className="flex-1 px-4">
