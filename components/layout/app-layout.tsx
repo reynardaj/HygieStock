@@ -60,6 +60,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <ThemeToggle />
             {/* User profile */}
             {user.photoURL ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
               <img src={user.photoURL} alt="Profile" className="w-8 h-8 rounded-full border border-border" referrerPolicy="no-referrer" />
             ) : (
               <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-xs">
