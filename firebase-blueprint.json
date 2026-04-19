@@ -1,0 +1,86 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "A user of the application, associated with a household.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "householdId": { "type": "string" }
+      },
+      "required": ["uid", "email"]
+    },
+    "Household": {
+      "title": "Household",
+      "description": "A shared household group.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "members": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["id", "name", "members"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "An inventory item.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "barcode": { "type": "string" },
+        "name": { "type": "string" },
+        "weight_g": { "type": "number" },
+        "volume_ml": { "type": "number" },
+        "category": { "type": "string", "enum": ["body_soap", "dishwash_soap", "shampoo", "detergent", "toothpaste", "facewash", "sunscreen", "other"] },
+        "currentStock": { "type": "number" },
+        "minStock": { "type": "number" },
+        "location": { "type": "string" },
+        "householdId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "currentStock", "householdId"]
+    },
+    "Scan": {
+      "title": "Scan",
+      "description": "A record of a barcode scan (stock in/out).",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "productId": { "type": "string" },
+        "type": { "type": "string", "enum": ["in", "out"] },
+        "quantity": { "type": "number" },
+        "userId": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "householdId": { "type": "string" }
+      },
+      "required": ["id", "productId", "type", "quantity", "userId", "timestamp", "householdId"]
+    },
+    "Task": {
+      "title": "Task",
+      "description": "A refill or shopping task.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "type": { "type": "string", "enum": ["refill", "shopping"] },
+        "status": { "type": "string", "enum": ["pending", "done"] },
+        "dueDate": { "type": "string", "format": "date-time" },
+        "householdId": { "type": "string" },
+        "completedAt": { "type": "string", "format": "date-time" },
+        "completedBy": { "type": "string" }
+      },
+      "required": ["id", "title", "type", "status", "householdId"]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": { "schema": "User", "description": "User profiles" },
+    "/households/{householdId}": { "schema": "Household", "description": "Household groups" },
+    "/households/{householdId}/products/{productId}": { "schema": "Product", "description": "Inventory products" },
+    "/households/{householdId}/scans/{scanId}": { "schema": "Scan", "description": "Scan history" },
+    "/households/{householdId}/tasks/{taskId}": { "schema": "Task", "description": "Refill and shopping tasks" }
+  }
+}

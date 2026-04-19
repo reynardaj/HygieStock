@@ -1,0 +1,106 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {uid}
+    // Fields:
+    //   - uid: string (required)
+    //   - email: string (required)
+    //   - displayName: string
+    //   - photoURL: string
+    //   - householdId: string (required)
+    //
+    // Collection: households
+    // Document ID: {householdId}
+    // Fields:
+    //   - id: string (required)
+    //   - name: string (required)
+    //   - members: list<string> (required) - UIDs of members
+    //
+    // Collection: households/{householdId}/products
+    // Document ID: {productId}
+    // Fields:
+    //   - id: string (required)
+    //   - barcode: string
+    //   - name: string (required)
+    //   - weight_g: number
+    //   - volume_ml: number
+    //   - category: string
+    //   - currentStock: number (required)
+    //   - householdId: string (required)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isMember(householdId) {
+      return isAuthenticated() && 
+        request.auth.uid in get(/databases/$(database)/documents/households/$(householdId)).data.members;
+    }
+
+    function isOwner(uid) {
+      return isAuthenticated() && request.auth.uid == uid;
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'householdId']) &&
+             data.uid is string &&
+             data.email is string &&
+             data.householdId is string;
+    }
+
+    function isValidProduct(data) {
+      return data.keys().hasAll(['id', 'name', 'currentStock', 'householdId']) &&
+             data.id is string &&
+             data.name is string &&
+             data.currentStock is number &&
+             data.householdId is string;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{uid} {
+      allow read: if isOwner(uid);
+      allow create: if isOwner(uid) && isValidUser(request.resource.data);
+      allow update: if isOwner(uid) && isValidUser(request.resource.data) && 
+                    request.resource.data.uid == resource.data.uid;
+    }
+
+    match /households/{householdId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated(); // For MVP, anyone can create a household
+      allow update: if isAuthenticated(); // For MVP, anyone can join a household
+      
+      match /products/{productId} {
+        allow read: if isMember(householdId);
+        allow create: if isMember(householdId) && isValidProduct(request.resource.data);
+        allow update: if isMember(householdId) && isValidProduct(request.resource.data);
+        allow delete: if isMember(householdId);
+      }
+
+      match /scans/{scanId} {
+        allow read: if isMember(householdId);
+        allow create: if isMember(householdId);
+      }
+
+      match /tasks/{taskId} {
+        allow read: if isMember(householdId);
+        allow create: if isMember(householdId);
+        allow update: if isMember(householdId);
+        allow delete: if isMember(householdId);
+      }
+    }
+  }
+}
