@@ -137,32 +137,43 @@ export default function InventoryPage() {
     }
   };
 
-  const getStatus = (stock: number) => {
-    if (stock === 0) return 'Out';
-    if (stock <= 2) return 'Critical';
-    if (stock <= 5) return 'Low';
+  const getStatus = React.useCallback((stock: any) => {
+    const s = typeof stock === 'number' ? stock : parseInt(stock);
+    if (isNaN(s)) return 'Healthy';
+    if (s === 0) return 'Out';
+    if (s <= 2) return 'Critical';
+    if (s <= 5) return 'Low';
     return 'Healthy';
-  };
+  }, []);
 
-  const filteredProducts = products.filter(p => {
-    const status = getStatus(p.currentStock);
-    
-    const matchesSearch = p.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         p.category?.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesStatus = selectedStatuses.length === 0 || selectedStatuses.includes(status);
-    const matchesCategory = selectedCategories.length === 0 || 
-                             (p.category && selectedCategories.includes(p.category)) ||
-                             (!p.category && selectedCategories.includes('Uncategorized'));
-    const matchesLocation = selectedLocations.length === 0 || 
-                             (p.location && selectedLocations.includes(p.location)) ||
-                             (!p.location && selectedLocations.includes('No Location'));
+  const categories = React.useMemo(() => 
+    Array.from(new Set(products.map(p => p.category || 'Uncategorized'))).sort()
+  , [products]);
 
-    return matchesSearch && matchesStatus && matchesCategory && matchesLocation;
-  });
+  const locations = React.useMemo(() => 
+    Array.from(new Set(products.map(p => p.location || 'No Location'))).sort()
+  , [products]);
 
-  const categories = Array.from(new Set(products.map(p => p.category || 'Uncategorized'))).sort();
-  const locations = Array.from(new Set(products.map(p => p.location || 'No Location'))).sort();
+  const filteredProducts = React.useMemo(() => {
+    return products.filter(p => {
+      const status = getStatus(p.currentStock);
+      
+      const search = searchQuery.toLowerCase().trim();
+      const matchesSearch = search === '' || 
+                           (p.name?.toLowerCase().includes(search) ?? false) ||
+                           (p.category?.toLowerCase().includes(search) ?? false);
+      
+      const matchesStatus = selectedStatuses.length === 0 || selectedStatuses.includes(status);
+      const matchesCategory = selectedCategories.length === 0 || 
+                               (p.category && selectedCategories.includes(p.category)) ||
+                               (!p.category && selectedCategories.includes('Uncategorized'));
+      const matchesLocation = selectedLocations.length === 0 || 
+                               (p.location && selectedLocations.includes(p.location)) ||
+                               (!p.location && selectedLocations.includes('No Location'));
+
+      return matchesSearch && matchesStatus && matchesCategory && matchesLocation;
+    });
+  }, [products, searchQuery, selectedStatuses, selectedCategories, selectedLocations, getStatus]);
 
   const toggleFilter = (list: string[], setList: React.Dispatch<React.SetStateAction<string[]>>, value: string) => {
     if (list.includes(value)) {
@@ -343,6 +354,7 @@ export default function InventoryPage() {
                       {STATUS_OPTIONS.map(status => (
                         <button
                           key={status}
+                          type="button"
                           onClick={() => toggleFilter(selectedStatuses, setSelectedStatuses, status)}
                           className={cn(
                             "flex items-center justify-center px-3 py-2 rounded-xl border-2 text-xs font-bold transition-all",
@@ -364,6 +376,7 @@ export default function InventoryPage() {
                       {categories.map(category => (
                         <button
                           key={category}
+                          type="button"
                           onClick={() => toggleFilter(selectedCategories, setSelectedCategories, category)}
                           className={cn(
                             "px-3 py-1.5 rounded-full border-2 text-xs font-medium transition-all",
@@ -385,6 +398,7 @@ export default function InventoryPage() {
                       {locations.map(location => (
                         <button
                           key={location}
+                          type="button"
                           onClick={() => toggleFilter(selectedLocations, setSelectedLocations, location)}
                           className={cn(
                             "px-3 py-1.5 rounded-full border-2 text-xs font-medium transition-all",
